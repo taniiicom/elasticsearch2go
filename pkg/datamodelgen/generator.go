@@ -7,8 +7,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Property struct {
@@ -90,6 +94,11 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 		})
 	}
 
+	// sort field names alphabetically
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].FieldName < fields[j].FieldName
+	})
+
 	structData := StructData{
 		PackageName:   packageName,
 		InitClassName: initClassName,
@@ -140,9 +149,10 @@ func mapElasticsearchTypeToGoType(esType string) string {
 }
 
 func toCamelCase(s string) string {
+	caser := cases.Title(language.Und) // or: `language.English`
 	parts := strings.Split(s, "_")
 	for i, part := range parts {
-		parts[i] = strings.Title(part)
+		parts[i] = caser.String(part)
 	}
 	return strings.Join(parts, "")
 }
