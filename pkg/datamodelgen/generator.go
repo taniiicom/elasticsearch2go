@@ -59,6 +59,7 @@ func main() {
 	packageName := flag.String("package", "searchmodel", "Name of the Go package")
 	structName := flag.String("struct", "GeneratedStruct", "Name of the generated Go struct")
 	initClassName := flag.String("init", "", "Name of the initial wrapper struct (optional)")
+	order := flag.String("order", "original", "Field order: 'original' or 'alphabetical'")
 	flag.Parse()
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
@@ -69,10 +70,10 @@ func main() {
 		*initClassName = fmt.Sprintf("%sWrapper", *structName)
 	}
 
-	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName)
+	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName, *order)
 }
 
-func processFile(inputPath, outputPath, packageName, structName, initClassName string) {
+func processFile(inputPath, outputPath, packageName, structName, initClassName, order string) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		log.Fatalf("Failed to read file %s: %v", inputPath, err)
@@ -84,8 +85,10 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 		log.Fatalf("Error unmarshalling JSON from file %s: %v", inputPath, err)
 	}
 
+	// memorize properties order
 	fields := []Field{}
-	for name, prop := range esMapping.Mappings.Properties {
+	for _, name := range getSortedKeys(esMapping.Mappings.Properties) {
+		prop := esMapping.Mappings.Properties[name]
 		fieldType := mapElasticsearchTypeToGoType(prop.Type)
 		fields = append(fields, Field{
 			FieldName: toCamelCase(name),
@@ -94,10 +97,17 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 		})
 	}
 
-	// sort field names alphabetically
-	sort.Slice(fields, func(i, j int) bool {
-		return fields[i].FieldName < fields[j].FieldName
-	})
+	// sort field names
+	switch order {
+	case "original":
+		// Do nothing, maintain original order
+	case "alphabetical":
+		sort.Slice(fields, func(i, j int) bool {
+			return fields[i].FieldName < fields[j].FieldName
+		})
+	default:
+		log.Fatalf("Invalid order option: %s. Use 'original' or 'alphabetical'.", order)
+	}
 
 	structData := StructData{
 		PackageName:   packageName,
@@ -123,6 +133,15 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 	}
 
 	fmt.Printf("Generated Go struct for %s and saved to %s\n", inputPath, outputPath)
+}
+
+// getSortedKeys returns a slice of keys ordered according to the definition order in the Mapping JSON.
+func getSortedKeys(properties map[string]Property) []string {
+	keys := make([]string, 0, len(properties))
+	for key := range properties {
+		keys = append(keys, key)
+	}
+	return keys
 }
 
 func mapElasticsearchTypeToGoType(esType string) string {
