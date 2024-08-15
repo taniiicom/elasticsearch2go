@@ -53,12 +53,16 @@ type StructData struct {
 	Fields        []Field
 }
 
+// GoTypeMap holds the mapping from Elasticsearch types to Go types.
+var GoTypeMap map[string]string
+
 func main() {
 	inputPath := flag.String("in", "", "Input JSON schema file (including file name)")
 	outputPath := flag.String("out", "", "Output Go file (including file name)")
 	packageName := flag.String("package", "searchmodel", "Name of the Go package")
 	structName := flag.String("struct", "GeneratedStruct", "Name of the generated Go struct")
 	initClassName := flag.String("init", "", "Name of the initial wrapper struct (optional)")
+	typeMappingPath := flag.String("type-mapping", "", "Path to JSON file specifying Elasticsearch to Go type mapping")
 	flag.Parse()
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
@@ -67,6 +71,24 @@ func main() {
 
 	if *initClassName == "" {
 		*initClassName = fmt.Sprintf("%sWrapper", *structName)
+	}
+
+	// load custom type mapping if provided
+	if *typeMappingPath != "" {
+		loadTypeMapping(*typeMappingPath)
+	} else {
+		// default mapping
+		GoTypeMap = map[string]string{
+			"integer":   "*uint64",
+			"float":     "*float64",
+			"boolean":   "bool",
+			"text":      "*string",
+			"keyword":   "*string",
+			"date":      "*time.Time",
+			"geo_point": "*GeoPoint",
+			"object":    "*map[string]interface{}",
+			"nested":    "[]interface{}",
+		}
 	}
 
 	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName)
@@ -126,25 +148,23 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 }
 
 func mapElasticsearchTypeToGoType(esType string) string {
-	switch esType {
-	case "integer":
-		return "*uint64"
-	case "float":
-		return "*float64"
-	case "boolean":
-		return "bool"
-	case "text", "keyword":
-		return "*string"
-	case "date":
-		return "*time.Time"
-	case "geo_point":
-		return "*GeoPoint"
-	case "object":
-		return "*map[string]interface{}"
-	case "nested":
-		return "[]interface{}"
-	default:
-		return "interface{}"
+	goType, exists := GoTypeMap[esType]
+	if !exists {
+		goType = "interface{}"
+	}
+
+	return goType
+}
+
+func loadTypeMapping(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read type mapping file %s: %v", filePath, err)
+	}
+
+	err = json.Unmarshal(data, &GoTypeMap)
+	if err != nil {
+		log.Fatalf("Error unmarshalling JSON from type mapping file %s: %v", filePath, err)
 	}
 }
 
