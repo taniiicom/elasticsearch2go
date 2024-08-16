@@ -55,6 +55,8 @@ type StructData struct {
 
 // GoTypeMap holds the mapping from Elasticsearch types to Go types.
 var GoTypeMap map[string]string
+var FieldExceptions map[string]string
+var TypeExceptions map[string]string
 
 func main() {
 	inputPath := flag.String("in", "", "Input JSON schema file (including file name)")
@@ -63,6 +65,8 @@ func main() {
 	structName := flag.String("struct", "GeneratedStruct", "Name of the generated Go struct")
 	initClassName := flag.String("init", "", "Name of the initial wrapper struct (optional)")
 	typeMappingPath := flag.String("type-mapping", "", "Path to JSON file specifying Elasticsearch to Go type mapping")
+	exceptionFieldPath := flag.String("exception-field", "", "Path to JSON file specifying exceptions for field names")
+	exceptionTypePath := flag.String("exception-type", "", "Path to JSON file specifying exceptions for field types")
 	flag.Parse()
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
@@ -91,6 +95,20 @@ func main() {
 		}
 	}
 
+	// load field exceptions if provided
+	if *exceptionFieldPath != "" {
+		loadFieldExceptions(*exceptionFieldPath)
+	} else {
+		FieldExceptions = make(map[string]string)
+	}
+
+	// load type exceptions if provided
+	if *exceptionTypePath != "" {
+		loadTypeExceptions(*exceptionTypePath)
+	} else {
+		TypeExceptions = make(map[string]string)
+	}
+
 	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName)
 }
 
@@ -108,9 +126,10 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 
 	fields := []Field{}
 	for name, prop := range esMapping.Mappings.Properties {
-		fieldType := mapElasticsearchTypeToGoType(prop.Type)
+		fieldName := mapElasticsearchFieldToGoField(name)
+		fieldType := mapElasticsearchTypeToGoType(name, prop.Type)
 		fields = append(fields, Field{
-			FieldName: toCamelCase(name),
+			FieldName: fieldName,
 			FieldType: fieldType,
 			JSONName:  name,
 		})
@@ -147,13 +166,27 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 	fmt.Printf("Generated Go struct for %s and saved to %s\n", inputPath, outputPath)
 }
 
-func mapElasticsearchTypeToGoType(esType string) string {
+func mapElasticsearchTypeToGoType(name, esType string) string {
+	// check if the type has a custom exception
+	if customType, exists := TypeExceptions[name]; exists {
+		return customType
+	}
+
 	goType, exists := GoTypeMap[esType]
 	if !exists {
 		goType = "interface{}"
 	}
 
 	return goType
+}
+
+func mapElasticsearchFieldToGoField(esFieldName string) string {
+	// check if the field has a custom exception
+	if customFieldName, exists := FieldExceptions[esFieldName]; exists {
+		return customFieldName
+	}
+
+	return toCamelCase(esFieldName)
 }
 
 func loadTypeMapping(filePath string) {
@@ -165,6 +198,30 @@ func loadTypeMapping(filePath string) {
 	err = json.Unmarshal(data, &GoTypeMap)
 	if err != nil {
 		log.Fatalf("Error unmarshalling JSON from type mapping file %s: %v", filePath, err)
+	}
+}
+
+func loadFieldExceptions(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read field exception file %s: %v", filePath, err)
+	}
+
+	err = json.Unmarshal(data, &FieldExceptions)
+	if err != nil {
+		log.Fatalf("Error unmarshalling JSON from field exception file %s: %v", filePath, err)
+	}
+}
+
+func loadTypeExceptions(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read type exception file %s: %v", filePath, err)
+	}
+
+	err = json.Unmarshal(data, &TypeExceptions)
+	if err != nil {
+		log.Fatalf("Error unmarshalling JSON from type exception file %s: %v", filePath, err)
 	}
 }
 
