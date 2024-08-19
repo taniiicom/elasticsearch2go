@@ -27,11 +27,20 @@ type ElasticsearchMapping struct {
 	Mappings Mappings `json:"mappings"`
 }
 
-const structTemplate = `package {{.PackageName}}
+const structTemplateWithWrapper = `package {{.PackageName}}
 
 type {{.InitClassName}} struct {
 	{{.StructName}}
 }
+
+type {{.StructName}} struct {
+{{- range .Fields}}
+	{{.FieldName}} {{.FieldType}} ` + "`json:\"{{.JSONName}}\"`" + `
+{{- end}}
+}
+`
+
+const structTemplateWithoutWrapper = `package {{.PackageName}}
 
 type {{.StructName}} struct {
 {{- range .Fields}}
@@ -71,10 +80,6 @@ func main() {
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
 		log.Fatalf("All --in, --out, --struct, and --package must be specified")
-	}
-
-	if *initClassName == "" {
-		*initClassName = fmt.Sprintf("%sWrapper", *structName)
 	}
 
 	// load custom type mapping if provided
@@ -147,7 +152,14 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 		Fields:        fields,
 	}
 
-	tmpl, err := template.New("struct").Parse(structTemplate)
+	// choose template based on the presence of initClassName
+	var tmpl *template.Template
+	if initClassName != "" {
+		tmpl, err = template.New("structWithWrapper").Parse(structTemplateWithWrapper)
+	} else {
+		tmpl, err = template.New("structWithoutWrapper").Parse(structTemplateWithoutWrapper)
+	}
+
 	if err != nil {
 		log.Fatalf("Error parsing template: %v", err)
 	}
