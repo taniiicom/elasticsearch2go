@@ -240,7 +240,7 @@ func mapElasticsearchFieldToGoField(esFieldName string) string {
 		return customFieldName
 	}
 
-	return toCamelCase(esFieldName)
+	return toPascalCase(esFieldName)
 }
 
 func loadTypeMapping(filePath string) {
