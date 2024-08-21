@@ -16,7 +16,8 @@ import (
 )
 
 type Property struct {
-	Type string `json:"type"`
+	Type       string              `json:"type"`
+	Properties map[string]Property `json:"properties,omitempty"`
 }
 
 type Mappings struct {
@@ -33,20 +34,12 @@ type {{.InitClassName}} struct {
 	{{.StructName}}
 }
 
-type {{.StructName}} struct {
-{{- range .Fields}}
-	{{.FieldName}} {{.FieldType}} ` + "`json:\"{{.JSONName}}\"`" + `
-{{- end}}
-}
+{{.StructDefinitions}}
 `
 
 const structTemplateWithoutWrapper = `package {{.PackageName}}
 
-type {{.StructName}} struct {
-{{- range .Fields}}
-	{{.FieldName}} {{.FieldType}} ` + "`json:\"{{.JSONName}}\"`" + `
-{{- end}}
-}
+{{.StructDefinitions}}
 `
 
 type Field struct {
@@ -56,10 +49,10 @@ type Field struct {
 }
 
 type StructData struct {
-	PackageName   string
-	InitClassName string
-	StructName    string
-	Fields        []Field
+	PackageName       string
+	InitClassName     string
+	StructName        string
+	StructDefinitions string
 }
 
 // GoTypeMap holds the mapping from Elasticsearch types to Go types.
@@ -129,27 +122,13 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 		log.Fatalf("Error unmarshalling JSON from file %s: %v", inputPath, err)
 	}
 
-	fields := []Field{}
-	for name, prop := range esMapping.Mappings.Properties {
-		fieldName := mapElasticsearchFieldToGoField(name)
-		fieldType := mapElasticsearchTypeToGoType(name, prop.Type)
-		fields = append(fields, Field{
-			FieldName: fieldName,
-			FieldType: fieldType,
-			JSONName:  name,
-		})
-	}
-
-	// sort field names alphabetically
-	sort.Slice(fields, func(i, j int) bool {
-		return fields[i].FieldName < fields[j].FieldName
-	})
+	structDefinitions := generateStructDefinitions(structName, esMapping.Mappings.Properties)
 
 	structData := StructData{
-		PackageName:   packageName,
-		InitClassName: initClassName,
-		StructName:    structName,
-		Fields:        fields,
+		PackageName:       packageName,
+		InitClassName:     initClassName,
+		StructName:        structName,
+		StructDefinitions: structDefinitions,
 	}
 
 	// choose template based on the presence of initClassName
@@ -176,6 +155,55 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 	}
 
 	fmt.Printf("Generated Go struct for %s and saved to %s\n", inputPath, outputPath)
+}
+
+func generateStructDefinitions(structName string, properties map[string]Property) string {
+	var structDefs strings.Builder
+
+	generateStruct(&structDefs, structName, properties)
+
+	return structDefs.String()
+}
+
+func generateStruct(structDefs *strings.Builder, structName string, properties map[string]Property) {
+	fields := []Field{}
+	nestedStructs := []string{}
+
+	for name, prop := range properties {
+		fieldName := mapElasticsearchFieldToGoField(name)
+		var fieldType string
+
+		if prop.Type == "object" || prop.Type == "nested" {
+			nestedStructName := toPascalCase(name)
+			fieldType = "*" + nestedStructName
+			nestedStructs = append(nestedStructs, generateStructDefinitions(nestedStructName, prop.Properties))
+		} else {
+			fieldType = mapElasticsearchTypeToGoType(name, prop.Type)
+		}
+
+		fields = append(fields, Field{
+			FieldName: fieldName,
+			FieldType: fieldType,
+			JSONName:  name,
+		})
+	}
+
+	// sort fields alphabetically
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].FieldName < fields[j].FieldName
+	})
+
+	// generate struct definition
+	structDefs.WriteString(fmt.Sprintf("type %s struct {\n", structName))
+	for _, field := range fields {
+		structDefs.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"`\n", field.FieldName, field.FieldType, field.JSONName))
+	}
+	structDefs.WriteString("}\n\n")
+
+	// append nested structs
+	for _, nestedStruct := range nestedStructs {
+		structDefs.WriteString(nestedStruct)
+	}
 }
 
 func mapElasticsearchTypeToGoType(name, esType string) string {
@@ -239,6 +267,16 @@ func loadTypeExceptions(filePath string) {
 
 func toCamelCase(s string) string {
 	caser := cases.Title(language.Und) // or: `language.English`
+	parts := strings.Split(s, "_")
+	for i, part := range parts {
+		parts[i] = caser.String(part)
+	}
+	parts[0] = strings.ToLower(parts[0])
+	return strings.Join(parts, "")
+}
+
+func toPascalCase(s string) string {
+	caser := cases.Title(language.Und)
 	parts := strings.Split(s, "_")
 	for i, part := range parts {
 		parts[i] = caser.String(part)
