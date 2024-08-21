@@ -60,6 +60,9 @@ var GoTypeMap map[string]string
 var FieldExceptions map[string]string
 var TypeExceptions map[string]string
 
+// StructNameTracker to avoid generating duplicate struct names
+var StructNameTracker map[string]bool
+
 func main() {
 	inputPath := flag.String("in", "", "Input JSON schema file (including file name)")
 	outputPath := flag.String("out", "", "Output Go file (including file name)")
@@ -74,6 +77,9 @@ func main() {
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
 		log.Fatalf("All --in, --out, --struct, and --package must be specified")
 	}
+
+	// initialize StructNameTracker
+	StructNameTracker = make(map[string]bool)
 
 	// load custom type mapping if provided
 	if *typeMappingPath != "" {
@@ -166,6 +172,14 @@ func generateStructDefinitions(structName string, properties map[string]Property
 }
 
 func generateStruct(structDefs *strings.Builder, structName string, properties map[string]Property) {
+	// check if the struct has already been generated
+	if _, exists := StructNameTracker[structName]; exists {
+		return
+	}
+
+	// mark this struct as generated
+	StructNameTracker[structName] = true
+
 	fields := []Field{}
 	nestedStructs := []string{}
 
