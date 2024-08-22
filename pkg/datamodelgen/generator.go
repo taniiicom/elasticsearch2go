@@ -77,6 +77,7 @@ func main() {
 	exceptionTypePath := flag.String("exception-type", "", "Path to JSON file specifying exceptions for field types")
 	skipFieldPath := flag.String("skip-field", "", "Path to JSON file specifying fields to skip")
 	fieldCommentPath := flag.String("field-comment", "", "Path to JSON file specifying comments for fields")
+	tmplPath := flag.String("tmpl", "", "Path to custom Go template file")
 	flag.Parse()
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
@@ -132,10 +133,30 @@ func main() {
 		FieldComments = make(map[string]string)
 	}
 
-	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName)
+	// load custom template if provided
+	var tmpl *template.Template
+	var err error
+	if *tmplPath != "" {
+		tmpl, err = template.ParseFiles(*tmplPath)
+		if err != nil {
+			log.Fatalf("Failed to load template file %s: %v", *tmplPath, err)
+		}
+	} else {
+		// choose default template based on the presence of initClassName
+		if *initClassName != "" {
+			tmpl, err = template.New("structWithWrapper").Parse(structTemplateWithWrapper)
+		} else {
+			tmpl, err = template.New("structWithoutWrapper").Parse(structTemplateWithoutWrapper)
+		}
+		if err != nil {
+			log.Fatalf("Error parsing template: %v", err)
+		}
+	}
+
+	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName, tmpl)
 }
 
-func processFile(inputPath, outputPath, packageName, structName, initClassName string) {
+func processFile(inputPath, outputPath, packageName, structName, initClassName string, tmpl *template.Template) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		log.Fatalf("Failed to read file %s: %v", inputPath, err)
@@ -154,18 +175,6 @@ func processFile(inputPath, outputPath, packageName, structName, initClassName s
 		InitClassName:     initClassName,
 		StructName:        structName,
 		StructDefinitions: structDefinitions,
-	}
-
-	// choose template based on the presence of initClassName
-	var tmpl *template.Template
-	if initClassName != "" {
-		tmpl, err = template.New("structWithWrapper").Parse(structTemplateWithWrapper)
-	} else {
-		tmpl, err = template.New("structWithoutWrapper").Parse(structTemplateWithoutWrapper)
-	}
-
-	if err != nil {
-		log.Fatalf("Error parsing template: %v", err)
 	}
 
 	var buf bytes.Buffer
