@@ -202,9 +202,16 @@ func generateStruct(structDefs *strings.Builder, structName string, properties m
 		var fieldType string
 
 		if prop.Type == "object" || prop.Type == "nested" {
-			nestedStructName := toPascalCase(name)
-			fieldType = "*" + nestedStructName
-			nestedStructs = append(nestedStructs, generateStructDefinitions(nestedStructName, prop.Properties))
+			// check if the type has a custom exception
+			if customType, exists := TypeExceptions[name]; exists {
+				nestedStructName := toPascalCase(name)
+				fieldType = customType
+				nestedStructs = append(nestedStructs, generateStructDefinitions(nestedStructName, prop.Properties))
+			} else {
+				nestedStructName := toPascalCase(name)
+				fieldType = "*" + nestedStructName
+				nestedStructs = append(nestedStructs, generateStructDefinitions(nestedStructName, prop.Properties))
+			}
 		} else {
 			fieldType = mapElasticsearchTypeToGoType(name, prop.Type)
 		}
