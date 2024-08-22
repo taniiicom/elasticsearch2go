@@ -59,6 +59,7 @@ type StructData struct {
 var GoTypeMap map[string]string
 var FieldExceptions map[string]string
 var TypeExceptions map[string]string
+var SkipFields map[string]bool
 
 // StructNameTracker to avoid generating duplicate struct names
 var StructNameTracker map[string]bool
@@ -72,6 +73,7 @@ func main() {
 	typeMappingPath := flag.String("type-mapping", "", "Path to JSON file specifying Elasticsearch to Go type mapping")
 	exceptionFieldPath := flag.String("exception-field", "", "Path to JSON file specifying exceptions for field names")
 	exceptionTypePath := flag.String("exception-type", "", "Path to JSON file specifying exceptions for field types")
+	skipFieldPath := flag.String("skip-field", "", "Path to JSON file specifying fields to skip")
 	flag.Parse()
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
@@ -111,6 +113,13 @@ func main() {
 		loadTypeExceptions(*exceptionTypePath)
 	} else {
 		TypeExceptions = make(map[string]string)
+	}
+
+	// load skip fields if provided
+	if *skipFieldPath != "" {
+		loadSkipFields(*skipFieldPath)
+	} else {
+		SkipFields = make(map[string]bool)
 	}
 
 	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName)
@@ -184,6 +193,11 @@ func generateStruct(structDefs *strings.Builder, structName string, properties m
 	nestedStructs := []string{}
 
 	for name, prop := range properties {
+		// skip fields that are in the SkipFields map
+		if _, skip := SkipFields[name]; skip {
+			continue
+		}
+
 		fieldName := mapElasticsearchFieldToGoField(name)
 		var fieldType string
 
@@ -276,6 +290,18 @@ func loadTypeExceptions(filePath string) {
 	err = json.Unmarshal(data, &TypeExceptions)
 	if err != nil {
 		log.Fatalf("Error unmarshalling JSON from type exception file %s: %v", filePath, err)
+	}
+}
+
+func loadSkipFields(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read skip fields file %s: %v", filePath, err)
+	}
+
+	err = json.Unmarshal(data, &SkipFields)
+	if err != nil {
+		log.Fatalf("Error unmarshalling JSON from skip fields file %s: %v", filePath, err)
 	}
 }
 
