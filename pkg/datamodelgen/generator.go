@@ -223,8 +223,15 @@ func generateStruct(structDefs *strings.Builder, structName string, properties m
 		if prop.Type == "object" || prop.Type == "nested" {
 			// check if the type has a custom exception
 			if customType, exists := TypeExceptions[name]; exists {
-				nestedStructName := toPascalCase(name)
+				var nestedStructName string
 				fieldType = customType
+				if strings.HasPrefix(fieldType, "*") {
+					nestedStructName = fieldType[1:] // "*" を取り除く
+				} else if strings.HasPrefix(fieldType, "[]") {
+					nestedStructName = fieldType[2:] // "[]" を取り除く
+				} else {
+					nestedStructName = fieldType
+				}
 				nestedStructs = append(nestedStructs, generateStructDefinitions(nestedStructName, prop.Properties))
 			} else {
 				nestedStructName := toPascalCase(name)
