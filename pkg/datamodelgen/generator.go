@@ -43,9 +43,10 @@ const structTemplateWithoutWrapper = `package {{.PackageName}}
 `
 
 type Field struct {
-	FieldName string
-	FieldType string
-	JSONName  string
+	FieldName    string
+	FieldType    string
+	JSONName     string
+	FieldComment string
 }
 
 type StructData struct {
@@ -60,6 +61,7 @@ var GoTypeMap map[string]string
 var FieldExceptions map[string]string
 var TypeExceptions map[string]string
 var SkipFields map[string]bool
+var FieldComments map[string]string
 
 // StructNameTracker to avoid generating duplicate struct names
 var StructNameTracker map[string]bool
@@ -74,6 +76,7 @@ func main() {
 	exceptionFieldPath := flag.String("exception-field", "", "Path to JSON file specifying exceptions for field names")
 	exceptionTypePath := flag.String("exception-type", "", "Path to JSON file specifying exceptions for field types")
 	skipFieldPath := flag.String("skip-field", "", "Path to JSON file specifying fields to skip")
+	fieldCommentPath := flag.String("field-comment", "", "Path to JSON file specifying comments for fields")
 	flag.Parse()
 
 	if *inputPath == "" || *outputPath == "" || *structName == "" || *packageName == "" {
@@ -120,6 +123,13 @@ func main() {
 		loadSkipFields(*skipFieldPath)
 	} else {
 		SkipFields = make(map[string]bool)
+	}
+
+	// load field comments if provided
+	if *fieldCommentPath != "" {
+		loadFieldComments(*fieldCommentPath)
+	} else {
+		FieldComments = make(map[string]string)
 	}
 
 	processFile(*inputPath, *outputPath, *packageName, *structName, *initClassName)
@@ -216,10 +226,13 @@ func generateStruct(structDefs *strings.Builder, structName string, properties m
 			fieldType = mapElasticsearchTypeToGoType(name, prop.Type)
 		}
 
+		fieldComment := mapElasticsearchFieldToComment(name)
+
 		fields = append(fields, Field{
-			FieldName: fieldName,
-			FieldType: fieldType,
-			JSONName:  name,
+			FieldName:    fieldName,
+			FieldType:    fieldType,
+			JSONName:     name,
+			FieldComment: fieldComment,
 		})
 	}
 
@@ -231,7 +244,11 @@ func generateStruct(structDefs *strings.Builder, structName string, properties m
 	// generate struct definition
 	structDefs.WriteString(fmt.Sprintf("type %s struct {\n", structName))
 	for _, field := range fields {
-		structDefs.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"`\n", field.FieldName, field.FieldType, field.JSONName))
+		if field.FieldComment != "" {
+			structDefs.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"` // %s\n", field.FieldName, field.FieldType, field.JSONName, field.FieldComment))
+		} else {
+			structDefs.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"`\n", field.FieldName, field.FieldType, field.JSONName))
+		}
 	}
 	structDefs.WriteString("}\n\n")
 
@@ -262,6 +279,15 @@ func mapElasticsearchFieldToGoField(esFieldName string) string {
 	}
 
 	return toPascalCase(esFieldName)
+}
+
+func mapElasticsearchFieldToComment(esFieldName string) string {
+	// check if the field has a custom comment
+	if comment, exists := FieldComments[esFieldName]; exists {
+		return comment
+	}
+
+	return ""
 }
 
 func loadTypeMapping(filePath string) {
@@ -309,6 +335,18 @@ func loadSkipFields(filePath string) {
 	err = json.Unmarshal(data, &SkipFields)
 	if err != nil {
 		log.Fatalf("Error unmarshalling JSON from skip fields file %s: %v", filePath, err)
+	}
+}
+
+func loadFieldComments(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Fatalf("Failed to read field comments file %s: %v", filePath, err)
+	}
+
+	err = json.Unmarshal(data, &FieldComments)
+	if err != nil {
+		log.Fatalf("Error unmarshalling JSON from field comments file %s: %v", filePath, err)
 	}
 }
 
