@@ -150,4 +150,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Maintenance and Support
 
-This package is currently maintained by [Your Name or Organization]. If you encounter any issues, please report them using the GitHub Issues.
+This package is currently maintained by @taniiicom (Taniii.com). If you encounter any issues, please report them using the GitHub Issues.
