@@ -24,39 +24,52 @@ go get github.com/taniiicom/elasticsearch2go
 
 このパッケージを使用して, Elasticsearch のマッピング定義から Go の構造体を生成する方法を以下に示します.
 
-### コマンドラインでの使用例
+### Command Line Exec
+
+e.g.
 
 ```bash
-elasticsearch2go --in=mapping.json --out=model.go --package=mypackage --struct=MyStruct
+go run github.com/taniiicom/elasticsearch2go/cmd \
+    --in example/elasticsearch/cafe-mapping.json \
+    --out example/infrastructure/datamodel/searchmodel/cafe.gen.go \
+    --struct CafeDocJson \
+    --package searchmodel \
 ```
 
-### コードでの使用例
+### Go Exec
 
 ```go
-package main
+package gen
 
 import (
-    "log"
-    "github.com/taniiicom/elasticsearch2go"
+	"log"
+
+	"github.com/taniiicom/elasticsearch2go" // import the package
 )
 
 func main() {
-    err := elasticsearch2go.GenerateStructs(
-        "mapping.json",
-        "model.go",
-        "mypackage",
-        "MyStruct",
-        "MyWrapperStruct",
-        "custom_mapping.json",
-        "custom_field_exceptions.json",
-        "custom_type_exceptions.json",
-        "skip_fields.json",
-        "field_comments.json",
-        "custom_template.tmpl",
-    )
-    if err != nil {
-        log.Fatalf("Failed to generate structs: %v", err)
-    }
+	// required arguments
+	inputPath := "example/elasticsearch/cafe-mapping.json"
+	outputPath := "example/infrastructure/datamodel/searchmodel/cafe.gen.go"
+	packageName := "searchmodel"
+	structName := "CafeDocJson"
+
+	// optional arguments
+	opts := &elasticsearch2go.GeneratorOptions{
+		InitClassName:      nil, // optional
+		TypeMappingPath:    nil, // optional
+		ExceptionFieldPath: nil, // optional
+		ExceptionTypePath:  nil, // optional
+		SkipFieldPath:      nil, // optional
+		FieldCommentPath:   nil, // optional
+		TmplPath:           nil, // optional
+	}
+
+	// generate datamodel
+	err := elasticsearch2go.GenerateDatamodel(inputPath, outputPath, packageName, structName, opts)
+	if err != nil {
+		log.Fatalf("Failed to generate data model: %v", err)
+	}
 }
 ```
 
