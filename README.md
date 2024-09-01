@@ -7,7 +7,7 @@
 
 ## Special Thanks!
 
-This project was originally developed during my time with the minimo division at MIXI, Inc. (@mixigroup) as part of our MLOps automation efforts. I am deeply grateful to the team for their generosity in allowing this package to be released as OSS. Thank you for your support!
+This project was originally developed during my time with the minimo division at MIXI, Inc. ([@mixigroup](https://github.com/mixigroup)) as part of our MLOps automation efforts. I am deeply grateful to the team for their generosity in allowing this package to be released as OSS. Thank you for your support!
 
 web: [https://mixi.co.jp/](https://mixi.co.jp/)
 
@@ -156,4 +156,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Maintenance and Support
 
-This package is currently maintained by @taniiicom (Taniii.com). If you encounter any issues, please report them using the GitHub Issues.
+This package is currently maintained by [@taniiicom](https://github.com/taniiicom) (Taniii.com). If you encounter any issues, please report them using the GitHub Issues.

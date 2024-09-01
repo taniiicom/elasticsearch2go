@@ -7,7 +7,7 @@
 
 ## 謝辞 (Special Thanks!)
 
-この project は, 株式会社 MIXI (@mixigroup) の minimo 事業部にジョインしていた時に, 私が MLOps の一つとして自動化のために作ったものです.  
+この project は, 株式会社 MIXI ([@mixigroup](https://github.com/mixigroup)) の minimo 事業部にジョインしていた時に, 私が MLOps の一つとして自動化のために作ったものです.  
 事業部のご厚意により, この package を OSS として公開することを快く承諾していただきました! ありがとうございます!
 
 web: [https://mixi.co.jp/](https://mixi.co.jp/)
@@ -157,4 +157,4 @@ elasticsearch の field にコメントを追加するための JSON ファイ�
 
 ## メンテナンスとサポート (Maintenance and Support)
 
-このパッケージは現在, @taniiicom (Taniii.com) によってメンテナンスされています. 問題が発生した場合は, GitHub の Issues を使用して報告してください.
+このパッケージは現在, [@taniiicom](https://github.com/taniiicom) (Taniii.com) によってメンテナンスされています. 問題が発生した場合は, GitHub の Issues を使用して報告してください.
