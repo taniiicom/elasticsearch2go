@@ -5,6 +5,8 @@
 
 `elasticsearch2go`は, Elasticsearch のマッピング定義を基に Go の構造体を自動生成するツールです. Elasticsearch の JSON スキーマから Go の構造体を生成し, コードの自動化と一貫性の維持を支援します.
 
+https://github.com/user-attachments/assets/33f1d144-b4b5-44cb-a399-9de3d7e1f522
+
 ## 謝辞 (Special Thanks!)
 
 この project は, 株式会社 MIXI ([@mixigroup](https://github.com/mixigroup)) の minimo 事業部にジョインしていた時に, 私が MLOps の一つとして自動化のために作ったものです.  
