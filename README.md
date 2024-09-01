@@ -5,6 +5,8 @@
 
 `elasticsearch2go` is a tool that automatically generates Go structs based on Elasticsearch mapping definitions. It helps automate the process of generating Go structs from Elasticsearch JSON schemas, ensuring consistency and reducing manual coding efforts.
 
+https://github.com/user-attachments/assets/33f1d144-b4b5-44cb-a399-9de3d7e1f522
+
 ## Special Thanks!
 
 This project was originally developed during my time with the minimo division at MIXI, Inc. ([@mixigroup](https://github.com/mixigroup)) as part of our MLOps automation efforts. I am deeply grateful to the team for their generosity in allowing this package to be released as OSS. Thank you for your support!
