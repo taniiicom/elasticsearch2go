@@ -1,4 +1,4 @@
-go run github.com/taniiicom/elasticsearch2go \
+go run github.com/taniiicom/elasticsearch2go/cmd \
     --in example/elasticsearch/cafe-mapping.json \
     --out example/infrastructure/datamodel/searchmodel/cafe.gen.go \
     --struct CafeDocJson \
